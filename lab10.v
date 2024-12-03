@@ -37,12 +37,9 @@ module lab10(
 // Declare system variables
 //reg  [31:0] fish_clock;
 //wire [9:0]  pos;
-wire 	fish1a_region;
-wire 	fish2a_region;
-wire 	fish3a_region;
-wire    fish1_region;
-wire    fish2_region;
-wire    fish3_region;
+wire 	pokemon1_region;
+wire    pokemon1a_region;
+wire 	ball_region;
 
 wire frame_sync;
 // declare SRAM control signals
@@ -73,35 +70,13 @@ localparam VBUF_W = 320; // video buffer width
 localparam VBUF_H = 240; // video buffer height
 
 assign frame_sync = (pixel_y == 524) &&(pixel_x ==799) && pixel_tick;
-// Set parameters for the fish images
-localparam FISH_VPOS1   = 64; // Vertical location of the fish in the sea image.
-localparam FISH_VPOS2   = 128; // Vertical location of the fish in the sea image.
-localparam FISH_VPOS5   = 2; // Vertical location of the fish in the sea image.
-localparam FISH_W      = 64; // Width of the fish.
-localparam FISH_H      = 32; // Height of the fish.
-localparam FISH2_W      = 64; // Width of the fish.
-localparam FISH2_H      = 44; // Height of the fish.
-localparam FISH3_W      = 40; // Width of the fish.
-localparam FISH3_H      = 45; // Height of the fish.
-localparam BOAT_W      = 75; // Width of the fish.
-localparam BOAT_H      = 27; // Height of the fish.
-//localparam FISH4_W      = 32; // Width of the fish.
-//localparam FISH4_H      = 16; // Height of the fish.
-reg [17:0] fish_addr[0:9];   // Address array for up to 8 fish images.
 
-// Initializes the fish images starting addresses.
-// Note: System Verilog has an easier way to initialize an array,
-//       but we are using Verilog 2001 :(
-initial begin
-  fish_addr[0] = VBUF_W*VBUF_H + 18'd0;         /* Addr for fish1 image #1 */
-  fish_addr[1] = VBUF_W*VBUF_H + FISH_W*FISH_H  ; /* Addr for fish1 image #2 */
-  fish_addr[2] = VBUF_W*VBUF_H + FISH_W*FISH_H*2;         /* Addr for fish2 image #1 */
-  fish_addr[3] = VBUF_W*VBUF_H + FISH_W*FISH_H*3; /* Addr for fish2 image #2 */
-  fish_addr[4] = VBUF_W*VBUF_H + FISH_W*FISH_H*4;         /* Addr for fish3 image #1 */
-  fish_addr[5] = VBUF_W*VBUF_H + FISH_W*FISH_H*5; /* Addr for fish3 image #2 */
-  fish_addr[6] = VBUF_W*VBUF_H + FISH_W*FISH_H*6;         /* Addr for fish4 image #1 */
-  fish_addr[7] = VBUF_W*VBUF_H + FISH_W*FISH_H*7; /* Addr for fish4 image #2 */
-end
+localparam pokemon1_W   = 64; //width of pokemon 1
+localparam pokemon1_H   = 58; //height of pokemon 1
+localparam ball_W   = 40; // width of ball
+localparam ball_H   = 40; // height of ball
+
+reg [17:0] pokemon_addr[0:9];   // Address array for up to 8 fish images.
 
 // Instiantiate the VGA sync signal generator
 vga_sync vs0(
@@ -118,86 +93,46 @@ clk_divider#(2) clk_divider0(
 /////////////////////////////////////////////////////////////////////////////
 reg [2:0] STATE;
 localparam [2:0] S_MAIN_INIT = 3'b000, S_MAIN_IDLE = 3'b001,
-                 S_MAIN_FISH1= 3'b010, S_MAIN_FISH2= 3'b011,
-                 S_MAIN_FISH3= 3'b100, S_MAIN_FISH4= 3'b101,
-                 S_MAIN_FISH5= 3'b110, S_MAIN_RUN  = 3'b111;
+                 S_MAIN_POKE1= 3'b010, S_MAIN_RUN  = 3'b011;
 reg  [15:0] faddr; // 64x32x2(page)x2(r/w)
 
-wire [15:0] fish_sram_addr;	//64x100x8
-wire [15:0] fish1a_sram_addr;	//64x100x8
-wire [15:0] fish2a_sram_addr;	//64x100x8
-wire [15:0] fish3a_sram_addr;	//64x100x8
-wire [15:0] fish1_sram_addr;	//64x100x8
-wire [15:0] fish2_sram_addr;	//64x100x8
-wire [15:0] fish3_sram_addr;	//64x100x8
-wire [15:0] boat_sram_addr;
-reg  [15:0] fish1a_addr;   	//64x100x8
-reg  [15:0] fish2a_addr;   	//64x100x8
-reg  [15:0] fish3a_addr;   	//64x100x8
-reg  [15:0] fish1_addr;   	//64x100x8
-reg  [15:0] fish2_addr;   	//64x100x8
-reg  [15:0] fish3_addr;   	//64x100x8
-reg  [15:0] fish4_addr;   	//64x100x8
-reg  [15:0] boat_addr;
-reg  [4:0] fish_load; // 
-wire [4:0] fish_we; //
-assign fish_we[0] = fish_load[0]& faddr[0];
-assign fish_we[1] = fish_load[1]& faddr[0];
-assign fish_we[2] = fish_load[2]& faddr[0];
-assign fish_we[3] = fish_load[3]& faddr[0];
-assign fish_we[4] = fish_load[4]& faddr[0];
-wire [11:0] fish1a_out, fish2a_out, fish3a_out,fish1_out, fish2_out, fish3_out, boat_out;
+wire [15:0] pokemon1_sram_addr;	
+wire [15:0] ball_sram_addr;
+reg  [15:0] pokemon1_addr;  
+reg  [15:0] pokemon1a_addr; 
+reg  [15:0] ball_addr; 
+
+reg  [4:0] poke_load; // 
+wire [4:0] poke_we; //
+assign poke_we[1] = poke_load[1]& faddr[1];
+
+wire [11:0] pokemon1_out, pokemon2_out, ball_out;
 /////////////////////////////////////////////////////////////////////////////
 always @(posedge clk  or negedge reset_n) begin
   if (~reset_n) begin
       STATE <= S_MAIN_INIT;
-	  fish_load[4:0] <= 5'b00000;
-	  faddr <= 0;
+	  poke_load[4:0] <= 5'b00000;
 	  faddr <= 0;
   end   
   else begin
 	  case (STATE)
 		S_MAIN_INIT  : STATE <=S_MAIN_IDLE;
 		S_MAIN_IDLE  :	begin
-							STATE <=S_MAIN_FISH1;
-							fish_load <= 5'b00001;
+							STATE <=S_MAIN_POKE1;
+							poke_load <= 5'b00001;
 							faddr <= 0;
 						end
-		S_MAIN_FISH1 : 	begin // write to sram if necessary
-							if (faddr >= 64*2*32*2) begin
-								STATE <=S_MAIN_FISH2;
-								fish_load <= 5'b00010;
-								faddr <= 0;
-							end
-							else begin
-								STATE <=S_MAIN_FISH1;
-								faddr <= faddr +1;
-							end
-						end
-		S_MAIN_FISH2 : 	begin
-							if (faddr>= 64*2*44*2 ) begin
-								STATE <=S_MAIN_FISH3;
-								fish_load <= 5'b00100;
-								faddr <= 0;
-								
-							end
-							else begin
-								STATE <=S_MAIN_FISH2;
-								faddr <= faddr +1;
-							end
-						end
-		S_MAIN_FISH3 : 	begin
-							if (faddr>= 40*2*45*2) begin
+		S_MAIN_POKE1 : 	begin // write to sram if necessary, but it seems that we dont need it now...
+							if (faddr >= 64*58*6) begin
 								STATE <=S_MAIN_RUN;
-								fish_load <= 5'b01000;
+								poke_load <= 5'b00010;
 								faddr <= 0;
 							end
 							else begin
-								STATE <=S_MAIN_FISH3;
+								STATE <=S_MAIN_POKE1;
 								faddr <= faddr +1;
 							end
 						end
-		
 		S_MAIN_RUN   : STATE <=S_MAIN_RUN;
 		default: STATE <=S_MAIN_INIT;
 	  endcase
@@ -232,39 +167,39 @@ end
 //sram64x32x2 u_fish1a (.clk(clk), .we(fish_we[0]), .en(sram_en), .addr(fish1a_sram_addr), .data_i(fish1_out), .data_o(fish1a_out));
 
 /////////////////background////////////////
-ROM_76800 rom0(
+ROM_76800 rom0( // background out
   .clka (clk),
   .ena  (sram_en),
   .wea  (sram_we),
   .addra(sram_addr),
   .dina (data_in),
   .douta(data_out));
-ROM_16384 fish1_rom(
+ROM_22272 poke1_rom( // don don mouse out
   .clka (clk),
   .ena  (sram_en),
   .wea  (sram_we),
-  .addra(fish1_sram_addr),
+  .addra(pokemon1_sram_addr),
   .dina (data_in),
-  .douta(fish1_out));   
+  .douta(pokemon1_out));   
+ROM_1600 ball_rom( // ball out
+  .clka (clk),
+  .ena  (sram_en),
+  .wea  (sram_we),
+  .addra(ball_sram_addr),
+  .dina (data_in),
+  .douta(ball_out)); 
 
 
 assign sram_we = 0; // In this demo, we do not write the SRAM. However, if
                              // you set 'sram_we' to 0, Vivado fails to synthesize
                              // ram0 as a BRAM -- this is a bug in Vivado.
 assign sram_en = 1;          // Here, we always enable the SRAM block.
-assign sram_addr = (fish_load[0]) ? VBUF_W*VBUF_H + 18'd0 +faddr[14:1] :
+assign sram_addr = (poke_load[0]) ? VBUF_W*VBUF_H + 18'd0 +faddr[14:1] :
 				    pixel_addr;
 assign data_in = 12'h000; // SRAM is read-only so we tie inputs to zeros.
 
-assign fish1a_sram_addr  = (STATE ==S_MAIN_RUN) ? fish1a_addr : faddr[15:1];
-assign fish2a_sram_addr  = (STATE ==S_MAIN_RUN) ? fish2a_addr : faddr[15:1];
-assign fish3a_sram_addr  = (STATE ==S_MAIN_RUN) ? fish3a_addr : faddr[15:1];
-assign fish1_sram_addr   = (STATE ==S_MAIN_RUN) ? fish1_addr : faddr[15:1];
-//assign fish2_sram_addr   = (STATE ==S_MAIN_RUN) ? fish2_addr : faddr[15:1];
-assign fish2_sram_addr   = (STATE ==S_MAIN_RUN) ? (fish2a_region) ? fish2a_addr : fish2_addr : faddr[15:1]; //copy fish2
-//assign fish3_sram_addr   = (STATE ==S_MAIN_RUN) ? fish3_addr : faddr[15:1];	
-assign fish3_sram_addr   = (STATE ==S_MAIN_RUN) ? fish3_addr : faddr[15:1];		
-assign boat_sram_addr         = (STATE ==S_MAIN_RUN) ? boat_addry* BOAT_W + boat_addrx : faddr[15:1];								  
+assign pokemon1_sram_addr = (STATE ==S_MAIN_RUN) ? (poke1a_region) ? pokemon1a_addr : pokemon1_addr : faddr[15:1]; // copy pokemon1									  
+assign ball_sram_addr  = (STATE ==S_MAIN_RUN) ? ball_addry* ball_W + ball_addrx : faddr[15:1];
 // End of the SRAM memory block.
 // ------------------------------------------------------------------------
 
@@ -277,95 +212,341 @@ assign {VGA_RED, VGA_GREEN, VGA_BLUE} = rgb_reg;
 // Note that the fish will move one screen pixel every 2^20 clock cycles,
 // or 10.49 msec
 
-reg  [3:0] fish_p;
+reg  [3:0] pokemon_p;
+reg [1:0] one_of_three; // let the don don mouse move to the next photo 1 / 3 frequency
+
+always@(posedge vga_clk or negedge reset_n)begin
+	if(~reset_n) begin
+		one_of_three <= 0;
+	end
+	else if (frame_sync) begin // to ensure that no more than six
+	   if(one_of_three == 2)begin
+			one_of_three <= 0;
+	   end
+	   else begin
+			one_of_three <= one_of_three + 1;
+	   end
+    end
+end
+
 always @(posedge vga_clk  or negedge reset_n) begin
   if (~reset_n) begin
-
-	  fish_p<= 0;
+	  pokemon_p<= 0;
   end
-  else if (frame_sync) begin
-	  fish_p <= fish_p+1;
+  else if (frame_sync && (one_of_three == 2)) begin // to ensure that no more than six
+	  pokemon_p <=(pokemon_p >= 5)? 0 : pokemon_p + 1;
   end
 end
 
 // ------------------------------------------------------------------------
-// fish 1
-reg [9:0] fish1_x;  //0~640
-reg [9:0] fish1_y;	//0~480
-wire [9:0] fish1_xe;
-wire [9:0] fish1_ye; 
-reg [1:0] fish1_dir; //[1] y: 0: To the down, 1: To the up; [0] 0: To the right, 1: To the left
-assign fish1_xe = fish1_x + FISH_W;
-assign fish1_ye = fish1_y + FISH_H -1;
-wire [5:0] fish1_addrx ;   //0~63
-wire [6:0] fish1_addry ;   //0~99
+// ball
+reg [9:0] ball_x;  //0~640
+reg [9:0] ball_y;	//0~480
+wire [9:0] ball_xe;
+wire [9:0] ball_ye; 
+reg [1:0] ball_dir; //[1] y: 0: To the down, 1: To the up; [0] 0: To the right, 1: To the left
+assign ball_xe = ball_x + ball_W - 1;
+assign ball_ye = ball_y + ball_H - 1;
+wire [5:0] ball_addrx ;   //0~63
+wire [5:0] ball_addry ;   //0~63
 
-// fish1
-assign fish1_region = (pixel_y >= fish1_y) && (pixel_y <= fish1_ye) && (pixel_x >= fish1_x) && (pixel_x <= fish1_xe);
+assign ball_region = (pixel_y >= ball_y) && (pixel_y <= ball_ye) && (pixel_x >= ball_x) && (pixel_x <= ball_xe);
 
 always @(posedge vga_clk  or negedge reset_n) begin
   if (~reset_n) begin
-	fish1_x <= 0;
-	fish1_y <= 200;
-	fish1_dir<= 2'b00;
+	ball_x <= 320;
+	ball_y <= 320;
   end
-  else if (frame_sync && get_fish[0]) fish1_y <= (fish1_y >= 32)  ? fish1_y -32 : 0;
   else if (frame_sync) begin
-	case (fish1_dir)
+	case (ball_dir)
 	2'b00:	begin
-			if ((fish1_xe >= 639) && (fish1_ye >= 479)) begin
-				fish1_dir[1:0] <= 2'b11;
+			if ((ball_xe >= 639) && (ball_ye >= 479)) begin
+				ball_dir[1:0] <= 2'b11;
 			end
-			else if (fish1_xe >= 639) begin
-				fish1_dir[1:0] <= 2'b01;	
-				fish1_y <= fish1_y+1;
+			else if (ball_xe >= 639) begin
+				ball_dir[1:0] <= 2'b01;	// y up when reach the region
 			end
-			else fish1_x <= fish1_x+fish1_speed;
+			else ball_x <= ball_x + 1;
 		end
 	2'b01:	begin
-			if (fish1_x <= fish1_speed) begin
-				fish1_dir[1:0] <= 2'b00;	
-				fish1_y <= fish1_y+1;
+			if (ball_x <= 310) begin
+				ball_dir[1:0] <= 2'b00;	
 			end
-			else fish1_x <= fish1_x - fish1_speed; 
+			else ball_x <= ball_x - 1; 
 		end
 	2'b10:	begin
-			if (fish1_xe >= 639) begin
-				fish1_dir[1:0] <= 2'b11;	
-				fish1_y <= fish1_y-1;
+			if (ball_xe >= 639) begin
+				ball_dir[1:0] <= 2'b11;	
 			end
-			else fish1_x <= fish1_x+fish1_speed;
+			else ball_x <= ball_x + 1;
 		end
 	2'b11:	begin
-			if ((fish1_x == 0) || (fish1_y == 0)) begin
-				fish1_dir[1:0] <= 2'b00;
+			if ((ball_x == 310) || (ball_y == 0)) begin
+				ball_dir[1:0] <= 2'b00;
 			end
-			else if (fish1_x <= fish1_speed) begin
-				fish1_dir[1:0] <= 2'b10;	
-				fish1_y <= fish1_y-1;
+			else if (ball_x <= 310) begin
+				ball_dir[1:0] <= 2'b10;	
 			end
-			else fish1_x <= fish1_x - fish1_speed; 
+			else ball_x <= ball_x - 1;
 		end
 	endcase
   end		 	
 end
-assign fish1_addrx = fish1_dir[0] ? FISH_W - 1 - (pixel_x - fish1_x) : (pixel_x - fish1_x);
-assign fish1_addry = (pixel_y - fish1_y);
 
+assign ball_addrx = (pixel_x - ball_x);
+assign ball_addry = (pixel_y - ball_y);
+
+// ------------------------------------------------------------------------
+// poke 1
+reg [9:0] poke1_x;  //0~640
+reg [9:0] poke1_y;	//0~480
+wire [9:0] poke1_xe;
+wire [9:0] poke1_ye; 
+reg [1:0] poke1_dir; //[1] y: 0: To the down, 1: To the up; [0] 0: To the right, 1: To the left
+assign poke1_xe = poke1_x + pokemon1_W * 2 - 1;
+assign poke1_ye = poke1_y + pokemon1_H * 2 - 1;
+wire [5:0] poke1_addrx ;   //0~63
+wire [5:0] poke1_addry ;   //0~63
+
+assign poke1_region = (pixel_y >= poke1_y) && (pixel_y <= poke1_ye) && (pixel_x >= poke1_x ) && (pixel_x <= poke1_xe);
+
+always @(posedge vga_clk  or negedge reset_n) begin
+  if (~reset_n) begin
+	poke1_x <= 320;
+	poke1_y <= 320;
+	poke1_dir<= 2'b00;
+  end
+  else if (frame_sync) begin
+	case (poke1_dir)
+	2'b00:	begin
+			if ((poke1_xe >= 639) && (poke1_ye >= 479)) begin
+				poke1_dir[1:0] <= 2'b11;
+			end
+			else if (poke1_xe >= 639) begin
+				poke1_dir[1:0] <= 2'b01;	// y up when reach the region
+				poke1_y <= poke1_y;
+			end
+			else poke1_x <= poke1_x + 1;
+		end
+	2'b01:	begin
+			if (poke1_x <= 310) begin
+				poke1_dir[1:0] <= 2'b00;	
+				poke1_y <= poke1_y;
+			end
+			else poke1_x <= poke1_x - 1; 
+		end
+	2'b10:	begin
+			if (poke1_xe >= 639) begin
+				poke1_dir[1:0] <= 2'b11;	
+				poke1_y <= poke1_y;
+			end
+			else poke1_x <= poke1_x + 1;
+		end
+	2'b11:	begin
+			if ((poke1_x == 310) || (poke1_y == 0)) begin
+				poke1_dir[1:0] <= 2'b00;
+			end
+			else if (poke1_x <= 310) begin
+				poke1_dir[1:0] <= 2'b10;	
+				poke1_y <= poke1_y;
+			end
+			else poke1_x <= poke1_x - 1; 
+		end
+	endcase
+  end		 	
+end
+assign poke1_addrx = (pixel_x - poke1_x) >> 1;
+assign poke1_addry = (pixel_y - poke1_y) >> 1;
+//---------------------------------------------------------------------------
+//change frame
 always @(*) begin
-	case(fish_p[3:1])
-	0:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx;
-	1:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H;
-	2:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*2;
-	3:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*3;
-	4:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*4;	
-	5:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*5;
-	6:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*6;
-	7:	fish1_addr <= fish1_addry* FISH_W + fish1_addrx + FISH_W*FISH_H*7;
+	case(pokemon_p[3:1])
+	0:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx;
+	1:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx + pokemon1_W*pokemon1_H;
+	2:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx + pokemon1_W*pokemon1_H*2;
+	3:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx + pokemon1_W*pokemon1_H*3;
+	4:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx + pokemon1_W*pokemon1_H*4;	
+	5:	pokemon1_addr <= poke1_addry* pokemon1_W + poke1_addrx + pokemon1_W*pokemon1_H*5;
 	endcase
 
 end
 
+// ------------------------------------------------------------------------
+// poke 1a
+reg [9:0] poke1a_x;  //0~640
+reg [9:0] poke1a_y;	//0~480
+wire [9:0] poke1a_xe;
+wire [9:0] poke1a_ye; 
+reg [1:0] poke1a_dir; //[1] y: 0: To the down, 1: To the up; [0] 0: To the right, 1: To the left
+assign poke1a_xe = poke1a_x + pokemon1_W*2 - 1;
+assign poke1a_ye = poke1a_y + pokemon1_H*2 - 1;
+wire [5:0] poke1a_addrx ;   //0~63
+wire [5:0] poke1a_addry ;   //0~63
+
+assign poke1a_region = (pixel_y >= poke1a_y) && (pixel_y <= poke1a_ye) && (pixel_x >= poke1a_x ) && (pixel_x <= poke1a_xe); // second don don mouth
+
+// use 2 1 0 button to control the left don don mouse
+// 2 : left , 1 : up, 0 : right
+// y have to be reduce so don don mouse can jump
+reg button_reduce; // use to control reduce
+reg button_add; // use to control add
+reg button_jump; // use to control jump
+reg stop_jump;
+reg initial_jump; // to initialize the start speed 12
+reg reach_the_ground;
+reg [30:0] add_counter;
+reg [30:0] red_counter;
+reg signed [5:0] jump_speed;
+
+// for jump speed
+always @(posedge clk or negedge reset_n) begin
+    if(~reset_n)begin
+        stop_jump <= 1;
+    end
+    else begin
+        if(button_jump && !reach_the_ground)begin
+            stop_jump <= 0;
+        end
+        else begin
+            stop_jump <= 1;
+        end
+    end
+end 
+reg start_second; // check if speed is initialize
+always @(posedge clk)begin // frame_sync
+    if(~reset_n)begin
+        initial_jump <= 0;
+    end
+    else if(button_jump && !initial_jump && !start_second)begin
+        initial_jump <= 1;
+    end
+    else if(initial_jump && start_second)begin
+        initial_jump <= 0;
+    end
+end
+
+always @(posedge clk or negedge reset_n)begin // frame_sync
+    if(~reset_n)begin
+        start_second <= 0;
+    end
+    else if(initial_jump)begin
+        start_second <= 1;
+    end
+end
+
+always @(posedge clk or negedge reset_n)begin // check with frame_sync
+    if(~reset_n)begin
+        jump_speed <= 0;
+    end
+    else if(initial_jump) begin
+        jump_speed <= -12;
+    end
+    else if(!stop_jump)begin
+        jump_speed <= jump_speed + 2;
+    end
+    else if(reach_the_ground)begin
+        jump_speed <= 0;
+    end
+    
+end
+
+// for moving
+always @(posedge clk or negedge reset_n) begin
+    if(~reset_n)begin
+        button_reduce <= 0;
+        button_add <= 0;
+        button_jump <= 0;
+        add_counter <= 0;
+        red_counter <= 0;
+    end
+    else begin
+        if(usr_btn[0])begin
+            button_add <= 1;
+        end
+        else begin
+            button_add <= 0;
+        end
+        if(usr_btn[2])begin
+            button_reduce <= 1;
+        end
+        else begin 
+            button_reduce <= 0;
+        end
+        if(usr_btn[1] && jump_speed == 0 && stop_jump)begin
+            button_jump <= 1;
+        end
+        else if(!stop_jump && usr_btn[1])begin
+            button_jump <= 1;
+        end
+        else if(!stop_jump && !usr_btn[1])begin
+            button_jump <= button_jump;
+        end
+        else if(stop_jump) begin
+            button_jump <= 0;
+        end
+    end
+end
+
+always @(posedge vga_clk  or negedge reset_n) begin
+  if (~reset_n) begin
+	poke1a_x <= 0;
+	poke1a_y <= 320;
+	poke1a_dir<= 2'b00;
+	reach_the_ground <= 1;
+  end
+  else if (frame_sync) begin
+	 if (poke1a_xe >= 330) begin
+	    poke1a_x <= poke1a_x - button_reduce * 2; 	
+		if(poke1a_y >= 320)begin
+		   reach_the_ground <= 1;
+		   poke1a_y <= 320;
+		end
+		else begin
+		  poke1a_y <= poke1a_y + jump_speed;
+		  reach_the_ground <= 0;
+		end
+	 end
+	 else if (poke1a_x <= 0) begin
+		if(poke1a_y >= 320)begin
+		   reach_the_ground <= 1;
+		   poke1a_y <= 320;
+		end
+		else begin
+		  poke1a_y <= poke1a_y + jump_speed;
+		  reach_the_ground <= 0;
+		end
+		poke1a_x <= poke1a_x + button_add * 2;
+	 end
+	 else begin
+	   poke1a_x <= poke1a_x + button_add * 2 - button_reduce * 2;
+	    if(poke1a_y >= 320)begin
+		   reach_the_ground <= 1;
+		   poke1a_y <= 320;
+		end
+		else begin
+		  poke1a_y <= poke1a_y + jump_speed;
+		  reach_the_ground <= 0;
+		end
+	 end
+  end		 	
+end
+
+
+assign poke1a_addrx = (pokemon1_W * 2 - 1 - (pixel_x - poke1a_x) >> 1);
+assign poke1a_addry = (pixel_y - poke1a_y) >> 1;
+
+
+always @(*) begin
+	case(pokemon_p[3:1])
+	0:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx;
+	1:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx + pokemon1_W*pokemon1_H;
+	2:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx + pokemon1_W*pokemon1_H*2;
+	3:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx + pokemon1_W*pokemon1_H*3;
+	4:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx + pokemon1_W*pokemon1_H*4;	
+	5:	pokemon1a_addr <= poke1a_addry* pokemon1_W + poke1a_addrx + pokemon1_W*pokemon1_H*5;
+	endcase
+
+end
 
 // ------------------------------------------------------------------------
 // Video frame buffer address generation unit (AGU) with scaling control
@@ -377,7 +558,11 @@ end
 //           (pixel_x + 127) >= pos && pixel_x < pos + 1;
 
 
-wire fish1_region_green = (fish1_out==12'h0F0);
+//wire poke1_region_green = (pokemon1_out==12'h0F0);
+wire poke1_region_green = (pokemon1_out[11:8] <= 8 && pokemon1_out[7:4] >= 6 && pokemon1_out[3:0] <= 9); // the first one
+//wire poke1a_region_green = (pokemon1_out[11:8] <= 8 && pokemon1_out[7:4] >= 6 && pokemon1_out[3:0] <= 9); // the second one
+wire poke1a_region_green = (pokemon1_out[11:8] <= 8 && pokemon1_out[7:4] >= 6 && pokemon1_out[3:0] <= 9);
+wire ball_region_green = (ball_out == 12'h0F0);
 
 always @ (posedge clk or negedge reset_n) begin
   if (~reset_n)
@@ -391,9 +576,9 @@ always @ (posedge clk or negedge reset_n) begin
 end
 // End of the AGU code.
 // ------------------------------------------------------------------------
-
 // ------------------------------------------------------------------------
 // Send the video data in the sram to the VGA controller
+
 always @(posedge clk) begin
   if (pixel_tick) rgb_reg <= rgb_next;
 end
@@ -402,11 +587,15 @@ always @(*) begin
   if (~video_on)
     rgb_next = 12'h000; // Synchronization period, must set RGB values to zero.
   else
-	if (fish1_region && ~fish1_region_green )
-		rgb_next = fish1_out;  //fish1
-
+	if (poke1_region && ~poke1_region_green )
+		rgb_next = pokemon1_out;  //poke1
+	else if (poke1a_region && ~poke1a_region_green )
+		rgb_next = pokemon1_out;
+	else if (ball_region && ~ball_region_green )
+		rgb_next = ball_out;
 	else 
 		rgb_next = data_out; // RGB value at (pixel_x, pixel_y)
+
 end
 // End of the video data display code.
 // ------------------------------------------------------------------------
@@ -416,21 +605,7 @@ wire [3:0] btn_level;
 reg [3:0] btn_pressed;
 reg  [3:0] prev_btn_level;
 
-debounce btn_db0(
-  .clk(clk),
-  .btn_input(usr_btn[0]),
-  .btn_output(btn_level[0])
-);
-debounce btn_db1(
-  .clk(clk),
-  .btn_input(usr_btn[1]),
-  .btn_output(btn_level[1])
-);
-debounce btn_db2(
-  .clk(clk),
-  .btn_input(usr_btn[2]),
-  .btn_output(btn_level[2])
-);
+
 debounce btn_db3(
   .clk(clk),
   .btn_input(usr_btn[3]),
@@ -442,14 +617,6 @@ always @(posedge clk or negedge reset_n) begin
     prev_btn_level <= 0;
   else
     prev_btn_level <= btn_level;
-end
-
-
-always @(posedge clk or negedge reset_n) begin
-    if(!reset_n) fish2_speed_level <= 0;
-	else if (btn_pressed[0]) fish1_speed_level <= (fish1_speed_level == 4 ) ? 0 : fish1_speed_level +1;
-    else if (btn_pressed[1]) fish2_speed_level <= (fish2_speed_level == 4 ) ? 0 : fish2_speed_level +1;
-	else if (btn_pressed[2]) fish3_speed_level <= (fish3_speed_level == 4 ) ? 0 : fish3_speed_level +1;
 end
 
 //
